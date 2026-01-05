@@ -4,7 +4,7 @@
 
 ## Overview
 
-FREDRICK is an Executive AI Partner for Southern Shade LLC, providing strategic business intelligence, compliance oversight, and risk analysis. Built on Google's Gemini AI platform, FREDRICK combines advanced language understanding with enterprise-grade ethical frameworks and operational parameters.
+FREDRICK is an Executive AI Partner for Southern Shade LLC, providing strategic business intelligence, compliance oversight, and risk analysis. Built on Groq's high-performance AI inference platform, FREDRICK combines advanced language understanding with enterprise-grade ethical frameworks and operational parameters.
 
 ## Core Principles
 
@@ -28,7 +28,7 @@ FREDRICK is an Executive AI Partner for Southern Shade LLC, providing strategic 
 ### Prerequisites
 
 - Python 3.8 or higher
-- Google Gemini API key ([Get one here](https://makersuite.google.com/app/apikey))
+- Groq API key ([Get one here](Groqhttps://console.groq.com/keys))
 
 ### Setup
 
@@ -46,7 +46,7 @@ FREDRICK is an Executive AI Partner for Southern Shade LLC, providing strategic 
 3. **Configure environment**
    ```bash
    cp .env.example .env
-   # Edit .env and add your GEMINI_API_KEY
+   # Edit .env and add your Groq's highGROQ_API_KEY-performance AI inference platform
    ```
 
 4. **Run FREDRICK**
@@ -159,9 +159,100 @@ flake8 backend/
 mypy backend/
 ```
 
+## REST API
+
+FREDRICK provides a production-ready REST API for programmatic access to all features.
+
+### Quick Start
+
+1. **Start the API server**
+
+```bash
+python backend/api.py
+```
+
+The server will run on `http://localhost:8000`
+
+2. **Set up authentication**
+
+Add to your `.env` file:
+```bash
+FREDRICK_API_KEY=your_secure_api_key_here
+```
+
+Generate a secure key:
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+```
+
+### API Endpoints
+
+#### Health Check
+```bash
+curl http://localhost:8000/
+```
+
+#### Chat - General Business Intelligence
+```bash
+curl -X POST http://localhost:8000/chat \
+  -H "X-API-Key: your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "message": "What are the compliance risks for a SAM.gov contract?",
+    "context": "250K, 12-month contract, CMMC Level 1 required"
+  }'
+```
+
+#### Risk Analysis
+```bash
+curl -X POST http://localhost:8000/risk-analysis \
+  -H "X-API-Key: your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "business_data": "Expanding into Mexico market with $500K investment",
+    "risk_areas": ["financial", "legal", "operational"]
+  }'
+```
+
+#### Compliance Check
+```bash
+curl -X POST http://localhost:8000/compliance-check \
+  -H "X-API-Key: your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "document": "Employment agreement text...",
+    "compliance_framework": "Texas Labor Law"
+  }'
+```
+
+#### Due Diligence
+```bash
+curl -X POST http://localhost:8000/due-diligence \
+  -H "X-API-Key: your_api_key" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "company_info": "XYZ Corp, Founded 2018, $5M revenue...",
+    "focus_areas": ["financial health", "legal risks"]
+  }'
+```
+
+### Testing
+
+Run the comprehensive test suite:
+```bash
+python backend/test_api.py
+```
+
+### API Documentation
+
+Interactive API documentation available at:
+- Swagger UI: `http://localhost:8000/docs`
+- ReDoc: `http://localhost:8000/redoc`
+
+
 ## Roadmap
 
-- [ ] Web API with FastAPI
+- [x ] Web API with FastAPI
 - [ ] Desktop application with Electron
 - [ ] Document analysis and summarization
 - [ ] Integration with business intelligence tools
