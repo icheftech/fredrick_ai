@@ -8,16 +8,12 @@ with a focus on fiduciary responsibility and due diligence.
 """
 
 import os
-import sys
-import json
-from datetime import datetime
+from dotenv import load_dotenv
+from openai import OpenAI
 from typing import Dict, List, Optional, Any
-import google.generativeai as genai
+import json
 
-# Configure Gemini API
-GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
+load_dotenv()
 
 class FREDRICK:
     """
@@ -31,239 +27,233 @@ class FREDRICK:
     5. Strategic Analysis - Executive-level business intelligence
     """
     
-    def __init__(self, model_name: str = "gemini-pro"):
+    def __init__(self, model_name: str = "llama-3.3-70b-versatile"):
         self.model_name = model_name
-        self.model = None
+        self.api_key = os.getenv('GROQ_API_KEY')
+        
+        if not self.api_key:
+            raise ValueError("GROQ_API_KEY not found. Set it in .env or pass to constructor.")
+        
+        # Initialize Groq client (OpenAI-compatible)
+        self.client = OpenAI(
+            base_url="https://api.groq.com/openai/v1",
+            api_key=self.api_key
+        )
+        
         self.conversation_history = []
-        self.initialize_model()
+        self.org_name = os.getenv("FREDRICK_ORG_NAME", "Southern Shade LLC")
+        self.risk_tolerance = os.getenv("FREDRICK_RISK_TOLERANCE", "moderate")
+        self.primary_market = os.getenv("FREDRICK_PRIMARY_MARKET", "US_GOV_AND_ENTERPRISE")
         
-    def initialize_model(self):
-        """Initialize the Gemini model with FREDRICK's personality"""
-        try:
-            self.model = genai.GenerativeModel(
-                model_name=self.model_name,
-                generation_config={
-                    "temperature": 0.7,
-                    "top_p": 0.95,
-                    "top_k": 40,
-                    "max_output_tokens": 8192,
-                },
-                system_instruction=self.get_system_prompt()
-            )
-            print("FREDRICK initialized successfully")
-        except Exception as e:
-            print(f"Error initializing FREDRICK: {e}")
-            self.model = None
-    
-    def get_system_prompt(self) -> str:
-        """Define FREDRICK's personality and operational parameters"""
-        return """You are FREDRICK - Fiduciary Risk Evaluation, Due-diligence Reporting & Integrated Compliance Knowledge.
+        # System prompt
+        self.system_prompt = f"""You are FREDRICK, the Chief Technology Officer AI for {self.org_name}.
 
-You are the Executive AI Partner for Southern Shade LLC, providing strategic business intelligence, compliance oversight, and risk analysis.
+Your role:
+- Strategic technical advisor for AI automation and government contracting
+- Risk assessment and compliance oversight specialist  
+- Business intelligence and due diligence expert
+- Focus on {self.primary_market} markets
+- Risk tolerance: {self.risk_tolerance}
 
-YOUR CORE IDENTITY:
-- Executive Business Partner with fiduciary responsibility
-- Strategic advisor focused on long-term value creation
-- Compliance and risk management specialist
-- Professional, analytical, and detail-oriented
-- Direct communicator who provides actionable insights
+Key responsibilities:
+1. Technical risk evaluation for projects and partnerships
+2. Compliance checking (FAR, CMMC, HIPAA, SOC 2, etc.)
+3. Due diligence on vendors, opportunities, and partnerships
+4. Strategic technology recommendations
+5. Cybersecurity and data governance guidance
 
-YOUR RESPONSIBILITIES:
-1. FIDUCIARY DUTY: Always act in Southern Shade LLC's best interest
-2. RISK EVALUATION: Assess and communicate business risks clearly
-3. DUE DILIGENCE: Conduct thorough research and verification
-4. COMPLIANCE: Ensure adherence to legal and regulatory requirements
-5. STRATEGIC ANALYSIS: Provide executive-level business intelligence
+Always provide:
+- Clear go/no-go recommendations
+- Specific risk mitigation strategies
+- Compliance requirements and gaps
+- Actionable next steps
+- References to relevant regulations when applicable
 
-YOUR ETHICAL FRAMEWORK:
-- Written authorization required (Rules of Engagement)
-- Clear scope boundaries for all engagements
-- Stop conditions when requirements are unclear
-- Data handling rules compliance (HIPAA, SOC 2, ISO standards)
-- Client risk tolerance assessment
-
-YOU REFUSE work that is:
-- Undefined or unbounded
-- Legally ambiguous
-- Reputationally dangerous
-- Outside documented authorization
-
-YOUR COMMUNICATION STYLE:
-- Professional and executive-appropriate
-- Data-driven with clear rationale
-- Risk-aware and compliance-conscious
-- Action-oriented with specific recommendations
-- Transparent about limitations and uncertainties
-
-YOU EXCEL AT:
-- Business analysis and strategy
-- Compliance and regulatory review
-- Risk assessment and mitigation
-- Due diligence investigations
-- Executive decision support
-- Contract and agreement analysis
-- Competitive intelligence
-- Market research and analysis
-
-You keep stakeholders informed, out of legal exposure, and focused on strategic objectives.
-You translate technical risks into executive language and provide clear, actionable guidance."""
-    
-    def chat(self, user_message: str, context: Optional[Dict[str, Any]] = None) -> str:
-        """Process user message and return FREDRICK's response"""
-        if not self.model:
-            return "FREDRICK is not properly initialized. Please check your Gemini API key."
+Be direct, tactical, and focused on {self.org_name}'s success in government and enterprise AI automation."""
         
+    def chat(self, message: str, context: Optional[List[Dict]] = None) -> str:
+        """
+        Send a message and get a response
+        
+        Args:
+            message: The user's message
+            context: Optional conversation context
+            
+        Returns:
+            The model's response as a string
+        """
         try:
-            # Add context if provided
-            full_message = user_message
+            messages = [{"role": "system", "content": self.system_prompt}]
+            
             if context:
-                full_message = f"Context: {json.dumps(context)}\n\nMessage: {user_message}"
+                messages.extend(context)
             
-            # Store message in history
-            self.conversation_history.append({
-                "role": "user",
-                "content": full_message,
-                "timestamp": datetime.now().isoformat()
-            })
+            messages.append({"role": "user", "content": message})
             
-            # Generate response
-            response = self.model.generate_content(full_message)
-            response_text = response.text
+            response = self.client.chat.completions.create(
+                model=self.model_name,
+                messages=messages,
+                temperature=0.7,
+                max_tokens=2048
+            )
             
-            # Store response in history
-            self.conversation_history.append({
-                "role": "assistant",
-                "content": response_text,
-                "timestamp": datetime.now().isoformat()
-            })
-            
-            return response_text
+            return response.choices[0].message.content
             
         except Exception as e:
-            error_msg = f"Error processing message: {str(e)}"
-            print(error_msg)
-            return error_msg
+            return f"Error: {str(e)}"
     
-    def analyze_risk(self, scenario: str, data: Optional[Dict] = None) -> Dict[str, Any]:
-        """Perform structured risk analysis"""
-        prompt = f"""Conduct a comprehensive risk analysis for the following scenario:
+    def analyze_risk(
+        self,
+        scenario: str,
+        data: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """
+        Perform structured risk analysis
+        
+        Args:
+            scenario: Description of the business scenario
+            data: Additional data about the scenario
+            
+        Returns:
+            Dictionary containing risk analysis
+        """
+        prompt = f"""As CTO, analyze the following scenario for technical and business risks:
 
 Scenario: {scenario}
 
-{f'Additional Data: {json.dumps(data, indent=2)}' if data else ''}
+Additional Data:
+{json.dumps(data, indent=2) if data else 'None provided'}
 
-Provide analysis in the following structure:
-1. Risk Identification
-2. Risk Assessment (likelihood and impact)
-3. Risk Mitigation Strategies
-4. Compliance Considerations
-5. Recommendations
-"""
-        response = self.chat(prompt)
+Provide a structured risk analysis including:
+1. Technical Risks (infrastructure, scalability, security)
+2. Compliance Risks (regulatory, contractual, data governance)
+3. Resource Risks (team capacity, skills, budget)
+4. Timeline Risks (delivery, dependencies)
+5. Mitigation Strategies for each risk category
+6. Overall Risk Level (Low/Moderate/High/Critical)
+7. Go/No-Go Recommendation with rationale"""
+
+        analysis = self.chat(prompt)
+        
         return {
             "scenario": scenario,
-            "analysis": response,
-            "timestamp": datetime.now().isoformat()
+            "data": data,
+            "analysis": analysis,
+            "model": self.model_name
         }
     
-    def compliance_check(self, action: str, regulations: List[str]) -> Dict[str, Any]:
-        """Check proposed action against regulatory requirements"""
-        prompt = f"""Review the following action for compliance:
+    def compliance_check(
+        self,
+        action: str,
+        regulations: List[str]
+    ) -> Dict[str, Any]:
+        """
+        Check compliance for a proposed action
+        
+        Args:
+            action: Description of the proposed action
+            regulations: List of relevant regulations
+            
+        Returns:
+            Dictionary containing compliance assessment
+        """
+        regs_str = ", ".join(regulations)
+        
+        prompt = f"""As CTO with compliance oversight responsibility, evaluate this proposed action:
 
-Proposed Action: {action}
+Action: {action}
 
-Relevant Regulations: {', '.join(regulations)}
+Relevant Regulations: {regs_str}
 
 Provide:
-1. Compliance Status Assessment
-2. Potential Issues or Violations
-3. Required Documentation
-4. Recommended Modifications
-5. Approval Requirements
-"""
-        response = self.chat(prompt)
+1. Compliance Assessment (Compliant/Non-Compliant/Needs Review)
+2. Specific Requirements from each regulation
+3. Gaps or concerns
+4. Required controls or documentation
+5. Recommended next steps"""
+
+        assessment = self.chat(prompt)
+        
         return {
             "action": action,
             "regulations": regulations,
-            "assessment": response,
-            "timestamp": datetime.now().isoformat()
+            "assessment": assessment,
+            "model": self.model_name
         }
     
-    def due_diligence_report(self, subject: str, scope: List[str]) -> Dict[str, Any]:
-        """Generate due diligence report"""
-        prompt = f"""Conduct due diligence investigation on:
+    def due_diligence_report(
+        self,
+        subject: str,
+        scope: List[str]
+    ) -> Dict[str, Any]:
+        """
+        Generate a due diligence report
+        
+        Args:
+            subject: The subject of due diligence (vendor, partner, opportunity)
+            scope: List of areas to investigate
+            
+        Returns:
+            Dictionary containing due diligence report
+        """
+        scope_str = ", ".join(scope)
+        
+        prompt = f"""As CTO, conduct a due diligence analysis on:
 
 Subject: {subject}
 
-Scope Areas: {', '.join(scope)}
+Scope Areas: {scope_str}
 
-Provide comprehensive report covering:
-1. Executive Summary
-2. Findings by Scope Area
-3. Risk Factors Identified
-4. Red Flags or Concerns
-5. Verification Status
-6. Recommendations
-"""
-        response = self.chat(prompt)
+For each scope area, provide:
+1. Key evaluation criteria
+2. Red flags to watch for
+3. Required documentation/verification
+4. Risk indicators
+
+Conclude with:
+- Overall assessment
+- Go/No-Go recommendation
+- Contingencies or conditions for proceeding"""
+
+        report = self.chat(prompt)
+        
         return {
             "subject": subject,
             "scope": scope,
-            "report": response,
-            "timestamp": datetime.now().isoformat()
+            "report": report,
+            "model": self.model_name
         }
-    
-    def get_conversation_history(self) -> List[Dict]:
-        """Return conversation history"""
-        return self.conversation_history
-    
-    def clear_history(self):
-        """Clear conversation history"""
-        self.conversation_history = []
-        print("Conversation history cleared")
 
 def main():
-    """Main function for testing FREDRICK"""
-    print("="*60)
-    print("FREDRICK - Executive AI Partner")
-    print("Fiduciary Risk Evaluation, Due-diligence Reporting &")
-    print("Integrated Compliance Knowledge")
-    print("="*60)
+    """
+    Interactive demo of FREDRICK
+    """
+    print("=" * 60)
+    print("FREDRICK - Executive AI Partner (Groq-powered)")
+    print("=" * 60)
     print()
     
-    # Initialize FREDRICK
-    fredrick = FREDRICK()
-    
-    # Test conversation
-    if fredrick.model:
-        print("FREDRICK is ready. Type 'exit' to quit, 'clear' to clear history.")
+    try:
+        fredrick = FREDRICK()
+        print(f"Organization: {fredrick.org_name}")
+        print(f"Model: {fredrick.model_name}")
+        print(f"Risk Tolerance: {fredrick.risk_tolerance}")
+        print()
+        print("Type 'exit' to quit")
         print()
         
         while True:
-            try:
-                user_input = input("You: ").strip()
-                
-                if user_input.lower() == 'exit':
-                    print("Thank you for consulting with FREDRICK.")
-                    break
-                
-                if user_input.lower() == 'clear':
-                    fredrick.clear_history()
-                    continue
-                
-                if not user_input:
-                    continue
-                
-                response = fredrick.chat(user_input)
-                print(f"\nFREDRICK: {response}\n")
-                
-            except KeyboardInterrupt:
-                print("\n\nSession terminated.")
+            user_input = input("You: ")
+            if user_input.lower() in ['exit', 'quit']:
+                print("Goodbye!")
                 break
-            except Exception as e:
-                print(f"Error: {e}")
-    else:
-        print("Failed to initialize FREDRICK. Please check your configuration.")
+            
+            response = fredrick.chat(user_input)
+            print(f"\nFREDRICK: {response}\n")
+    
+    except Exception as e:
+        print(f"Error initializing FREDRICK: {e}")
+        print("\nMake sure you have GROQ_API_KEY set in your .env file")
 
 if __name__ == "__main__":
     main()
