@@ -1,9 +1,9 @@
 # FREDRICK - Executive AI Partner Dependencies
 
-# Google Gemini AI
-google-generativeai>=0.3.0
+# OpenAI-compatible Groq API
+openai>=1.0.0
 
-# Core Python libraries
+# Core Python libraries  
 python-dotenv>=1.0.0
 
 # Type hints and validation
